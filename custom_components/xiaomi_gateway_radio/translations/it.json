@@ -1,0 +1,39 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Configura Xiaomi Gateway Radio",
+        "description": "Inserisci le informazioni per connetterti al tuo Xiaomi Gateway Radio.",
+        "data": {
+          "host": "Indirizzo IP",
+          "token": "Token",
+          "name": "Nome"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Impossibile connettersi al dispositivo. Controlla IP e token.",
+      "unknown": "Errore imprevisto"
+    },
+    "abort": {
+      "already_configured": "Questo dispositivo è già configurato."
+    }
+  },
+
+  "entity": {
+    "media_player": {
+      "xiaomi_gateway_radio": {
+        "name": "Xiaomi Gateway Radio"
+      }
+    }
+  },
+
+  "title": "Xiaomi Gateway Radio",
+
+  "device_automation": {
+    "trigger_type": {
+      "turned_on": "Gateway acceso",
+      "turned_off": "Gateway spento"
+    }
+  }
+}
