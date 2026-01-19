@@ -14,13 +14,13 @@ from .const import DOMAIN, DATA_DEVICE, DEFAULT_NAME
 
 _LOGGER = logging.getLogger(__name__)
 
+# SOLO LE FEATURE REALMENTE SUPPORTATE DAL GATEWAY
 SUPPORT_XIAOMI_GATEWAY_FM = (
-    MediaPlayerEntityFeature.VOLUME_STEP
-    | MediaPlayerEntityFeature.TURN_ON
+    MediaPlayerEntityFeature.TURN_ON
     | MediaPlayerEntityFeature.TURN_OFF
-    | MediaPlayerEntityFeature.VOLUME_MUTE
     | MediaPlayerEntityFeature.VOLUME_SET
-    | MediaPlayerEntityFeature.NEXT_TRACK
+    | MediaPlayerEntityFeature.VOLUME_STEP
+    | MediaPlayerEntityFeature.VOLUME_MUTE
 )
 
 
@@ -29,12 +29,12 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up media player from config entry."""
     data = hass.data[DOMAIN][entry.entry_id]
     device = data[DATA_DEVICE]
     info = data["info"]
 
     name = entry.data.get("name", DEFAULT_NAME)
+    volume_step = entry.data.get("volume_step", 5)
 
     entity = XiaomiGatewayRadioMediaPlayer(
         hass=hass,
@@ -44,13 +44,13 @@ async def async_setup_entry(
         firmware=info.firmware_version,
         hardware=info.hardware_version,
         unique_id=f"{info.model}-{info.mac_address}-fm",
+        volume_step=volume_step,
     )
 
     async_add_entities([entity])
 
 
 class XiaomiGatewayRadioMediaPlayer(MediaPlayerEntity):
-    """Representation of the Xiaomi Gateway Radio."""
 
     _attr_supported_features = SUPPORT_XIAOMI_GATEWAY_FM
 
@@ -63,6 +63,7 @@ class XiaomiGatewayRadioMediaPlayer(MediaPlayerEntity):
         firmware: str,
         hardware: str,
         unique_id: str,
+        volume_step: int,
     ) -> None:
         self.hass = hass
         self._device = device
@@ -75,8 +76,26 @@ class XiaomiGatewayRadioMediaPlayer(MediaPlayerEntity):
         self._attr_icon = "mdi:radio"
         self._attr_available = True
         self._attr_state = None
+
         self._muted = False
         self._volume = 0.0
+        self._volume_step = max(1, int(volume_step))
+
+    # ---------------------------
+    # PROPRIETÀ RICHIESTE DA HA
+    # ---------------------------
+
+    @property
+    def volume_level(self):
+        return self._volume
+
+    @property
+    def is_volume_muted(self):
+        return self._muted
+
+    @property
+    def state(self):
+        return self._attr_state
 
     @property
     def extra_state_attributes(self):
@@ -85,10 +104,15 @@ class XiaomiGatewayRadioMediaPlayer(MediaPlayerEntity):
             "firmware_version": self._firmware,
             "hardware_version": self._hardware,
             "muted": self._muted,
+            "volume_step": self._volume_step,
         }
 
+    # ---------------------------
+    # COMANDI DI BASE
+    # ---------------------------
+
     async def _async_try_command(self, mask_error: str, func, *args, **kwargs) -> bool:
-        from miio import DeviceException  # type: ignore
+        from miio import DeviceException
 
         try:
             result = await self.hass.async_add_executor_job(
@@ -96,68 +120,80 @@ class XiaomiGatewayRadioMediaPlayer(MediaPlayerEntity):
             )
             _LOGGER.debug("Response from Xiaomi Gateway Radio: %s", result)
             return True
-        except DeviceException as exc:  # type: ignore
+        except DeviceException as exc:
             _LOGGER.error("%s: %s", mask_error, exc)
             self._attr_available = False
             return False
 
-    async def async_turn_off(self) -> None:
-        await self._async_try_command(
-            "Turning the Gateway off failed", self._device.send, "play_fm", ["off"]
-        )
-        self._attr_state = STATE_OFF
-        self.async_write_ha_state()
+    # ---------------------------
+    # ON / OFF
+    # ---------------------------
 
-    async def async_turn_on(self) -> None:
-        await self._async_try_command(
-            "Turning the Gateway on failed", self._device.send, "play_fm", ["on"]
-        )
-        self._attr_state = STATE_ON
-        self.async_write_ha_state()
+    async def async_turn_on(self):
+        ok = await self._async_try_command("Turn on failed", self._device.send, "play_fm", ["on"])
+        if ok:
+            self._attr_state = STATE_ON
+            self.async_write_ha_state()
 
-    async def async_volume_up(self) -> None:
-        volume = round(self._volume * 100) + 1
-        await self._async_try_command(
-            "Increasing volume failed", self._device.send, "set_fm_volume", [volume]
-        )
+    async def async_turn_off(self):
+        ok = await self._async_try_command("Turn off failed", self._device.send, "play_fm", ["off"])
+        if ok:
+            self._attr_state = STATE_OFF
+            self.async_write_ha_state()
 
-    async def async_volume_down(self) -> None:
-        volume = max(0, round(self._volume * 100) - 1)
-        await self._async_try_command(
-            "Decreasing volume failed", self._device.send, "set_fm_volume", [volume]
-        )
+    # ---------------------------
+    # VOLUME
+    # ---------------------------
 
-    async def async_set_volume_level(self, volume: float) -> None:
+    async def async_volume_up(self):
+        volume = round(self._volume * 100) + self._volume_step
+        volume = max(0, min(100, volume))
+        await self._async_try_command("Volume up failed", self._device.send, "set_fm_volume", [volume])
+
+    async def async_volume_down(self):
+        volume = round(self._volume * 100) - self._volume_step
+        volume = max(0, min(100, volume))
+        await self._async_try_command("Volume down failed", self._device.send, "set_fm_volume", [volume])
+
+    async def async_set_volume_level(self, volume):
+        try:
+            volume = float(volume)
+        except Exception:
+            _LOGGER.error("Invalid volume value: %s", volume)
+            return
+
         volset = max(0, min(100, round(volume * 100)))
-        await self._async_try_command(
+
+        ok = await self._async_try_command(
             "Setting volume failed", self._device.send, "set_fm_volume", [volset]
         )
 
-    async def async_mute_volume(self, mute: bool) -> None:
-        volume = 0 if mute else 10
-        ok = await self._async_try_command(
-            "Muting volume failed", self._device.send, "set_fm_volume", [volume]
-        )
         if ok:
-            self._muted = mute
+            self._volume = volume
+            self._muted = (volset == 0)
+            self._attr_volume_level = volume
             self.async_write_ha_state()
 
-    async def async_media_next_track(self) -> None:
-        await self._async_try_command(
-            "Next track failed", self._device.send, "play_fm", ["next"]
-        )
+    async def async_mute_volume(self, mute: bool):
+        volume = 0 if mute else 10
+        ok = await self._async_try_command("Mute failed", self._device.send, "set_fm_volume", [volume])
+        if ok:
+            self._muted = mute
+            self._volume = volume / 100
+            self.async_write_ha_state()
 
-    async def async_update(self) -> None:
-        """Fetch state from the gateway."""
-        from miio import DeviceException  # type: ignore
+    # ---------------------------
+    # UPDATE
+    # ---------------------------
+
+    async def async_update(self):
+        from miio import DeviceException
 
         try:
             def _sync_state():
                 return self._device.send("get_prop_fm", "")
 
             state = await self.hass.async_add_executor_job(_sync_state)
-
-            _LOGGER.debug("Got new state from Xiaomi Gateway Radio: %s", state)
 
             volume = state.pop("current_volume", None)
             status = state.pop("current_status", None)
@@ -171,11 +207,10 @@ class XiaomiGatewayRadioMediaPlayer(MediaPlayerEntity):
             elif status == "run":
                 self._attr_state = STATE_ON
             else:
-                _LOGGER.warning("Unexpected state from gateway: %s", status)
                 self._attr_state = None
 
             self._attr_available = True
 
-        except DeviceException as ex:  # type: ignore
+        except DeviceException as ex:
             self._attr_available = False
-            _LOGGER.error("Error while fetching state from Xiaomi Gateway Radio: %s", ex)
+            _LOGGER.error("Error while fetching state: %s", ex)

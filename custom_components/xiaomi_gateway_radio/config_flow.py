@@ -44,7 +44,7 @@ class XiaomiGatewayRadioConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             try:
                 info = await _async_validate_input(self.hass, user_input)
-            except Exception as err:  # broad, ma qui va bene per flusso
+            except Exception as err:  # broad, ma ok per il flow
                 _LOGGER.error("Error validating Xiaomi Gateway Radio: %s", err)
                 errors["base"] = "cannot_connect"
             else:
@@ -57,6 +57,7 @@ class XiaomiGatewayRadioConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         CONF_HOST: user_input[CONF_HOST],
                         CONF_TOKEN: user_input[CONF_TOKEN],
                         "name": info["title"],
+                        "volume_step": user_input.get("volume_step", 5),
                     },
                 )
 
@@ -65,6 +66,7 @@ class XiaomiGatewayRadioConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Required(CONF_HOST): str,
                 vol.Required(CONF_TOKEN): str,
                 vol.Optional("name", default=DEFAULT_NAME): str,
+                vol.Optional("volume_step", default=5): int,
             }
         )
 
