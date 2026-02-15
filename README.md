@@ -9,7 +9,9 @@ Home Assistant Xiaomi Gateway Radio
 
 Fully Works with Homeassistant 2026.2.0
 
-This is a custom component to play/stop the Network radio in a Xiaomi Gateway
+This is a custom component to play (on/off) the Network radio in a Xiaomi Gateway
+
+It also includes controls for volume and mute.
 
 Tested and Works with :
 --------------------------------------------------------
