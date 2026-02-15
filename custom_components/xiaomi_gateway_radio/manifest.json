@@ -1,8 +1,8 @@
 {
   "domain": "xiaomi_gateway_radio",
   "name": "Xiaomi Gateway Radio",
-  "version": "1.0.0",
-  "documentation": "https://github.com/romans3/xiaomi_miio_gateway",
+  "version": "1.0.1",
+  "documentation": "https://github.com/romans3/xiaomi-miio-gateway",
   "requirements": [
     "python-miio>=0.5.12"
   ],
