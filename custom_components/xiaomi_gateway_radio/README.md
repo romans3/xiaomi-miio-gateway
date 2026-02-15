@@ -1,4 +1,5 @@
-# xiaomi_miio_gateway
+# Xiaomi miio gateway
+
 Home Assistant Xiaomi Gateway Radio
 
 New Version Full Compatibility With Homeassistant 2026.1.0
