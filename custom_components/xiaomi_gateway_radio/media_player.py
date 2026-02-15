@@ -14,7 +14,6 @@ from .const import DOMAIN, DATA_DEVICE, DEFAULT_NAME
 
 _LOGGER = logging.getLogger(__name__)
 
-# SOLO LE FEATURE REALMENTE SUPPORTATE DAL GATEWAY
 SUPPORT_XIAOMI_GATEWAY_FM = (
     MediaPlayerEntityFeature.TURN_ON
     | MediaPlayerEntityFeature.TURN_OFF
@@ -28,6 +27,7 @@ try:
 except ImportError:
     Device = None
     DeviceException = None
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -48,6 +48,7 @@ async def async_setup_entry(
         model=info.model,
         firmware=info.firmware_version,
         hardware=info.hardware_version,
+        mac=info.mac_address,
         unique_id=f"{info.model}-{info.mac_address}-fm",
         volume_step=volume_step,
     )
@@ -67,6 +68,7 @@ class XiaomiGatewayRadioMediaPlayer(MediaPlayerEntity):
         model: str,
         firmware: str,
         hardware: str,
+        mac: str,
         unique_id: str,
         volume_step: int,
     ) -> None:
@@ -74,9 +76,11 @@ class XiaomiGatewayRadioMediaPlayer(MediaPlayerEntity):
         self._device = device
         self._attr_name = name
         self._attr_unique_id = unique_id
+
         self._model = model
         self._firmware = firmware
         self._hardware = hardware
+        self._mac = mac
 
         self._attr_icon = "mdi:radio"
         self._attr_available = True
@@ -85,6 +89,22 @@ class XiaomiGatewayRadioMediaPlayer(MediaPlayerEntity):
         self._muted = False
         self._volume = 0.0
         self._volume_step = max(1, int(volume_step))
+
+    # ---------------------------
+    # DEVICE INFO (per pagina Info Dispositivo)
+    # ---------------------------
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, self._mac)},
+            "connections": {("mac", self._mac)},
+            "name": self._attr_name,
+            "manufacturer": "Xiaomi",
+            "model": self._model,
+            "sw_version": self._firmware,
+            "hw_version": self._hardware,
+            "via_device": (DOMAIN, "gateway_radio"),
+        }
 
     # ---------------------------
     # PROPRIETÀ RICHIESTE DA HA
@@ -108,6 +128,7 @@ class XiaomiGatewayRadioMediaPlayer(MediaPlayerEntity):
             "model": self._model,
             "firmware_version": self._firmware,
             "hardware_version": self._hardware,
+            "mac": self._mac,
             "muted": self._muted,
             "volume_step": self._volume_step,
         }
@@ -117,7 +138,6 @@ class XiaomiGatewayRadioMediaPlayer(MediaPlayerEntity):
     # ---------------------------
 
     async def _async_try_command(self, mask_error: str, func, *args, **kwargs) -> bool:
-        """Nessun import qui!"""
         if DeviceException is None:
             _LOGGER.error("python-miio not available")
             return False
@@ -128,7 +148,7 @@ class XiaomiGatewayRadioMediaPlayer(MediaPlayerEntity):
             )
             _LOGGER.debug("Response from Xiaomi Gateway Radio: %s", result)
             return True
-        except DeviceException as exc:  # ✅ Ora funziona
+        except DeviceException as exc:
             _LOGGER.error("%s: %s", mask_error, exc)
             self._attr_available = False
             return False
@@ -195,7 +215,6 @@ class XiaomiGatewayRadioMediaPlayer(MediaPlayerEntity):
     # ---------------------------
 
     async def async_update(self):
-        """Nessun import qui!"""
         if DeviceException is None:
             self._attr_available = False
             return
@@ -222,6 +241,6 @@ class XiaomiGatewayRadioMediaPlayer(MediaPlayerEntity):
 
             self._attr_available = True
 
-        except DeviceException as ex:  # ✅ Ora funziona
+        except DeviceException as ex:
             self._attr_available = False
             _LOGGER.error("Error while fetching state: %s", ex)
