@@ -50,8 +50,8 @@ Follow only one of these installation methods.
 2. With UI: go in INTEGRATIONS, click on ADD Integrations and selection "Xiaomi Gateway Radio", and click ADD. Then enter setup request value.
 </details>
 
-<img width="1272" height="430" alt="image" src="https://github.com/user-attachments/assets/a68408c0-04dc-488f-a340-b1fbdb1c0bd6" />
-<img width="825" height="718" alt="image" src="https://github.com/user-attachments/assets/7faddc9a-08fe-4700-b204-53449c53d707" />
+<img width="1302" height="436" alt="image" src="https://github.com/user-attachments/assets/f8ddb4bd-538a-443d-ae77-0539b57cdb79" />
+<img width="1370" height="716" alt="image" src="https://github.com/user-attachments/assets/ac2bfe31-4e94-41d2-8d89-34147022c1dc" />
 
 
 token is obtained the same way as explained here ->
