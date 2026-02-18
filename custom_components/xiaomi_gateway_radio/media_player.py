@@ -103,7 +103,6 @@ class XiaomiGatewayRadioMediaPlayer(MediaPlayerEntity):
             "model": self._model,
             "sw_version": self._firmware,
             "hw_version": self._hardware,
-            "via_device": ("xiaomi_aqara", self._mac),
         }
 
     # ---------------------------
